@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* Custom Global Styling Fallbacks using Tailwind v4 standard modifiers */
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 min-h-screen antialiased;
+  }
+}
