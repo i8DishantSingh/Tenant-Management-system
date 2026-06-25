@@ -1,70 +1,68 @@
-// This is your Prisma schema file,
-// optimized for automatic room/floor layouts and remote tenant applications.
-
 generator client {
-  provider = "prisma-client-js" 
+  provider = "prisma-client-js"
   output   = "../generated/prisma/client"
 }
 
 datasource db {
   provider = "postgresql"
-  
 }
 
-model User {
+model Landlord {
   id           Int        @id @default(autoincrement())
   name         String     @db.VarChar(100)
   email        String     @unique @db.VarChar(150)
   passwordHash String     @map("password_hash")
-  phoneNumber  String     @db.VarChar(15) @map("phone_number")
+  phoneNumber  String     @map("phone_number") @db.VarChar(15)
   createdAt    DateTime   @default(now()) @map("created_at")
   properties   Property[]
 
-  @@map("users")
+  @@map("landlords")
 }
 
 model Property {
-  id                Int                 @id @default(autoincrement())
-  userId            Int                 @map("user_id")
-  name              String              @db.VarChar(100) // e.g., "Greenwood Boys PG"
-  address           String              @db.Text
-  createdAt         DateTime            @default(now()) @map("created_at")
-  
-  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rooms             Room[]
-  tenants           Tenant[]
-  tenantApplications TenantApplication[] // One-to-many link tracking inbound digital request forms
+  id         Int      @id @default(autoincrement())
+  landlordId Int      @map("landlord_id")
+  name       String   @db.VarChar(100)
+  address    String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  landlord           Landlord            @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+  rooms              Room[]
+  tenants            Tenant[]
+  tenantApplications TenantApplication[]
+  expenses           Expense[]
+  maintenanceTicket  MaintenanceTicket[]
 
   @@map("properties")
 }
 
 model Room {
-  id                  Int                 @id @default(autoincrement())
-  propertyId          Int                 @map("property_id")
-  floorNumber         Int                 @default(0) @map("floor_number") // Tracks layout level to aid your auto-generation loop
-  roomNumber          String              @db.VarChar(20) @map("room_number") // Auto-computed string (e.g., "101", "G-02")
-  roomType            String              @default("Shared") @db.VarChar(50) @map("room_type") // Single, Double, Triple
-  baseRent            Decimal             @db.Decimal(10, 2) @map("base_rent")
-  latestMeterReading  Decimal             @default(0.00) @db.Decimal(10, 2) @map("latest_meter_reading")
-  createdAt           DateTime            @default(now()) @map("created_at")
+  id                 Int      @id @default(autoincrement())
+  propertyId         Int      @map("property_id")
+  floorNumber        Int      @default(0) @map("floor_number")
+  roomNumber         String   @map("room_number") @db.VarChar(20)
+  roomType           String   @default("Shared") @map("room_type") @db.VarChar(50)
+  baseRent           Decimal  @map("base_rent") @db.Decimal(10, 2)
+  latestMeterReading Decimal  @default(0.00) @map("latest_meter_reading") @db.Decimal(10, 2)
+  createdAt          DateTime @default(now()) @map("created_at")
 
-  property            Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  beds                Bed[]
-  tenantApplications  TenantApplication[] // Allows a tenant application to target a specific desired room type/number
+  property           Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  beds               Bed[]
+  tenantApplications TenantApplication[]
 
   @@map("rooms")
 }
 
 model Bed {
-  id                 Int                 @id @default(autoincrement())
-  roomId             Int                 @map("room_id")
-  bedNumber          String              @db.VarChar(10) @map("bed_number") // e.g., "Bed A", "Bed B"
-  isOccupied         Boolean             @default(false) @map("is_occupied")
-  createdAt          DateTime            @default(now()) @map("created_at")
+  id         Int      @id @default(autoincrement())
+  roomId     Int      @map("room_id")
+  bedNumber  String   @map("bed_number") @db.VarChar(10)
+  isOccupied Boolean  @default(false) @map("is_occupied")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   room               Room                @relation(fields: [roomId], references: [id], onDelete: Cascade)
   tenants            Tenant[]
-  tenantApplications TenantApplication[] // Allows a tenant to directly apply for an exact available bed slot
+  tenantApplications TenantApplication[]
 
   @@map("beds")
 }
@@ -74,17 +72,17 @@ model Tenant {
   propertyId       Int       @map("property_id")
   bedId            Int?      @map("bed_id")
   name             String    @db.VarChar(100)
-  phoneNumber      String    @db.VarChar(15) @map("phone_number")
-  emergencyContact String?   @db.VarChar(15) @map("emergency_contact")
-  idProofUrl       String?   @db.Text @map("id_proof_url")
-  status           String    @default("Active") @db.VarChar(20) // Active, Checked_Out
-  joiningDate      DateTime  @db.Date @map("joining_date")
-  leavingDate      DateTime? @db.Date @map("leaving_date")
+  phoneNumber      String    @map("phone_number") @db.VarChar(15)
+  emergencyContact String?   @map("emergency_contact") @db.VarChar(15)
+  idProofUrl       String?   @map("id_proof_url") @db.Text
+  status           String    @default("Active") @db.VarChar(20)
+  joiningDate      DateTime  @map("joining_date") @db.Date
+  leavingDate      DateTime? @map("leaving_date") @db.Date
   createdAt        DateTime  @default(now()) @map("created_at")
 
-  property         Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  bed              Bed?      @relation(fields: [bedId], references: [id], onDelete: SetNull)
-  invoices         Invoice[]
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  bed      Bed?      @relation(fields: [bedId], references: [id], onDelete: SetNull)
+  invoices Invoice[]
 
   @@map("tenants")
 }
@@ -92,19 +90,19 @@ model Tenant {
 model TenantApplication {
   id               Int      @id @default(autoincrement())
   propertyId       Int      @map("property_id")
-  roomId           Int?     @map("room_id") // Optional target context
-  bedId            Int?     @map("bed_id")  // Optional target context
+  roomId           Int?     @map("room_id")
+  bedId            Int?     @map("bed_id")
   name             String   @db.VarChar(100)
-  phoneNumber      String   @db.VarChar(15) @map("phone_number")
-  emergencyContact String?  @db.VarChar(15) @map("emergency_contact")
-  idProofUrl       String?  @db.Text @map("id_proof_url")
-  status           String   @default("Pending") @db.VarChar(20) // "Pending", "Approved", "Rejected"
-  proposedJoinDate DateTime @db.Date @map("proposed_join_date")
+  phoneNumber      String   @map("phone_number") @db.VarChar(15)
+  emergencyContact String?  @map("emergency_contact") @db.VarChar(15)
+  idProofUrl       String?  @map("id_proof_url") @db.Text
+  status           String   @default("Pending") @db.VarChar(20)
+  proposedJoinDate DateTime @map("proposed_join_date") @db.Date
   createdAt        DateTime @default(now()) @map("created_at")
 
-  property         Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  room             Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
-  bed              Bed?     @relation(fields: [bedId], references: [id], onDelete: SetNull)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  room     Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  bed      Bed?     @relation(fields: [bedId], references: [id], onDelete: SetNull)
 
   @@map("tenant_applications")
 }
@@ -112,21 +110,52 @@ model TenantApplication {
 model Invoice {
   id                     Int       @id @default(autoincrement())
   tenantId               Int       @map("tenant_id")
-  billingPeriodStart     DateTime  @db.Date @map("billing_period_start")
-  billingPeriodEnd       DateTime  @db.Date @map("billing_period_end")
-  baseRentCharged        Decimal   @db.Decimal(10, 2) @map("base_rent_charged")
-  previousMeterReading   Decimal   @db.Decimal(10, 2) @map("previous_meter_reading")
-  currentMeterReading    Decimal   @db.Decimal(10, 2) @map("current_meter_reading")
-  electricityRatePerUnit Decimal   @db.Decimal(5, 2) @map("electricity_rate_per_unit")
-  electricityTotal       Decimal   @db.Decimal(10, 2) @map("electricity_total")
-  additionalCharges      Decimal   @default(0.00) @db.Decimal(10, 2) @map("additional_charges")
-  totalAmountDue         Decimal   @db.Decimal(10, 2) @map("total_amount_due")
-  paymentStatus          String    @default("Pending") @db.VarChar(20) @map("payment_status")
-  paymentMode            String?   @db.VarChar(20) @map("payment_mode")
+  billingPeriodStart     DateTime  @map("billing_period_start") @db.Date
+  billingPeriodEnd       DateTime  @map("billing_period_end") @db.Date
+  baseRentCharged        Decimal   @map("base_rent_charged") @db.Decimal(10, 2)
+  previousMeterReading   Decimal   @map("previous_meter_reading") @db.Decimal(10, 2)
+  currentMeterReading    Decimal   @map("current_meter_reading") @db.Decimal(10, 2)
+  electricityRatePerUnit Decimal   @map("electricity_rate_per_unit") @db.Decimal(5, 2)
+  electricityTotal       Decimal   @map("electricity_total") @db.Decimal(10, 2)
+  additionalCharges      Decimal   @default(0.00) @map("additional_charges") @db.Decimal(10, 2)
+  totalAmountDue         Decimal   @map("total_amount_due") @db.Decimal(10, 2)
+  paymentStatus          String    @default("Pending") @map("payment_status") @db.VarChar(20)
+  paymentMode            String?   @map("payment_mode") @db.VarChar(20)
   paidAt                 DateTime? @map("paid_at")
   createdAt              DateTime  @default(now()) @map("created_at")
 
-  tenant                 Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("invoices")
+}
+
+model Expense {
+  id         Int      @id @default(autoincrement())
+  propertyId Int      @map("property_id")
+  title      String
+  category   String
+  amount     Decimal  @db.Decimal(10, 2)
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+model MaintenanceTicket {
+  id          Int      @id @default(autoincrement())
+  propertyId  Int      @map("property_id")
+  roomNumber  String   @map("room_number") @db.VarChar(10)
+  category    String   @db.VarChar(50)
+  description String   @db.Text
+  severity    String   @default("Medium") @db.VarChar(15) // Low, Medium, High
+  status      String   @default("Open") @db.VarChar(20) // Open, In Progress, Resolved
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relational Map bindings
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_tickets")
 }

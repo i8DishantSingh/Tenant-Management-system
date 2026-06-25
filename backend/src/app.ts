@@ -6,7 +6,6 @@ import invoiceRoutes from "./routes/invoice.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 import { requireAuth } from "./middlewares/auth.middleware.js";
 import expenseRoutes from "./routes/expense.routes.js";
-
 import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
